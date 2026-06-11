@@ -1,0 +1,9 @@
+.owen-wiki-plugin-status {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  line-height: 1.4;
+}
+
+.owen-wiki-plugin-status strong {
+  color: var(--text-normal);
+}

@@ -1,0 +1,72 @@
+name: Wiki Lint
+
+on:
+  pull_request:
+    paths:
+      - 'wiki/**'
+      - 'README.md'
+      - 'AGENTS.md'
+      - 'index.md'
+      - 'scripts/**'
+  workflow_dispatch:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Find orphan pages
+        run: python scripts/find-orphans.py
+
+      - name: Scan broken wikilinks
+        run: python scripts/scan-broken-links.py
+
+      - name: Check ontology consistency
+        run: python scripts/check-ontology.py
+
+      - name: Check tag drift
+        run: python scripts/check-tags.py
+
+      - name: Identify stub pages
+        run: python scripts/identify-stubs.py
+
+      - name: Check confidence decay
+        run: python scripts/check-confidence-decay.py
+
+      - name: Enforce quality gates
+        run: python scripts/wiki-quality-gates.py
+
+      - name: Check graph hygiene
+        run: python scripts/check-graph-hygiene.py
+
+      - name: Check related-to budget
+        run: python scripts/check-related-to-budget.py --refresh
+
+      - name: Generate action queue
+        run: python scripts/wiki-action-queue.py
+
+      - name: Check ontology relation quality
+        run: python scripts/check-ontology-relations.py
+
+      - name: Generate operations dashboard
+        run: python scripts/wiki-ops-dashboard.py
+
+      - name: Generate registry workbench
+        run: python scripts/registry-promotion-workbench.py
+
+      - name: Generate graph delta report
+        run: python scripts/graph-delta-report.py
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wiki-lint-reports
+          path: outputs/wiki-ops/
+          if-no-files-found: ignore

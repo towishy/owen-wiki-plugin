@@ -1,0 +1,122 @@
+# Tag Aliases — 태그 정규화 매핑
+#
+# AGENTS.md §태그 프리픽스 규칙에 따라 통합한다.
+# scripts/migrate-tags.py가 이 사전을 읽어 자동 일괄 변환한다.
+#
+# 형식: 정규(canonical): [별칭, ...]
+
+# ─── prod/ (Microsoft Security 제품) ───
+prod/mde:
+  - prod/defender-endpoint
+  - prod/defender-for-endpoint
+  - topic/mde
+prod/mdi:
+  - prod/defender-identity
+  - topic/mdi
+prod/mdo:
+  - prod/defender-office
+  - prod/defender-o365
+prod/mdc:
+  - prod/defender-cloud
+  - topic/mdc
+prod/mda:
+  - prod/defender-cloud-apps
+  - prod/mcas
+prod/sentinel:
+  - prod/microsoft-sentinel
+  - topic/sentinel
+prod/entra:
+  - prod/aad
+  - prod/azure-ad
+  - prod/entra-id
+prod/purview:
+  - topic/purview
+prod/purview-dlp:
+  - prod/dlp
+  - topic/dlp
+prod/intune:
+  - prod/microsoft-intune
+prod/security-copilot:
+  - prod/copilot-security
+  - prod/sec-copilot
+prod/gsa:
+  - prod/global-secure-access
+
+# ─── topic/ (주제) ───
+topic/zero-trust:
+  - topic/zt
+  - topic/zerotrust
+topic/conditional-access:
+  - topic/ca
+  - topic/조건부액세스
+topic/identity:
+  - topic/id
+  - topic/아이덴티티
+topic/cloud-security:
+  - topic/cloud-sec
+topic/data-loss-prevention:
+  - topic/dlp-concept
+topic/insider-risk:
+  - topic/irm
+topic/data-exfiltration:
+  - topic/exfiltration
+topic/xdr:
+  - topic/XDR
+topic/itdr:
+  - topic/ITDR
+topic/network-dlp:
+  - topic/network-DLP
+topic/apj:
+  - topic/APJ
+topic/app-governance:
+  - topic/App-Governance
+topic/kerberos:
+  - topic/Kerberos
+topic/mfa:
+  - topic/MFA
+topic/pim:
+  - topic/PIM
+topic/soar:
+  - topic/SOAR
+topic/titan:
+  - topic/TITAN
+topic/ueba:
+  - topic/UEBA
+
+# ─── type/ (문서 유형) ───
+type/summary:
+  - type/요약
+type/comparison:
+  - type/비교
+type/synthesis:
+  - type/종합
+type/customer-engagement:
+  - type/customer
+  - type/고객
+type/lab:
+  - type/실습
+type/webinar:
+  - type/웨비나
+
+# ─── customer/ (고객) ───
+# 고객사 명칭은 한글 표기 우선 (영문 별칭 → 한글로 정규화)
+customer/크래프톤:
+  - customer/krafton
+customer/kb증권:
+  - customer/kb
+customer/sk하이닉스:
+  - customer/sk-hynix
+customer/네이버:
+  - customer/naver
+customer/엔씨소프트:
+  - customer/ncsoft
+customer/넷마블:
+  - customer/netmarble
+
+# ─── series/ (시리즈) ───
+series/zt-pillars:
+  - series/zero-trust-pillars
+series/ninja-training:
+  - series/ninja
+series/security-school:
+  - series/sec-school
