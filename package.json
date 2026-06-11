@@ -1,13 +1,14 @@
 {
   "name": "owen-wiki-plugin",
-  "version": "1.17.0",
+  "version": "1.18.0",
   "description": "Obsidian plugin that installs the Owen-WIKI template kit into the active vault.",
   "main": "main.js",
   "type": "module",
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
-    "package": "npm run build && node scripts/package-release.mjs"
+    "package": "npm run build && node scripts/package-release.mjs",
+    "sync:template": "node scripts/sync-template-kit.mjs"
   },
   "keywords": [
     "obsidian",

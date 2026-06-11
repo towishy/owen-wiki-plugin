@@ -1,10 +1,14 @@
-import { App, Notice, Plugin, PluginSettingTab, Setting, normalizePath } from 'obsidian';
+import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, normalizePath } from 'obsidian';
 
-const TEMPLATE_VERSION = '1.17';
+const TEMPLATE_VERSION = '1.18';
 const TEMPLATE_ROOT = 'template-kit';
+const RELEASE_URL = 'https://github.com/towishy/owen-wiki-plugin/releases/tag/1.18';
+type SetupPreset = 'minimal' | 'standard' | 'full' | 'custom';
 
 interface OwenWikiPluginSettings {
   autoInstallOnFirstActivation: boolean;
+  initialSetupPromptDismissed: boolean;
+  setupPreset: SetupPreset;
   overwriteExistingFiles: boolean;
   includeScripts: boolean;
   includeAssets: boolean;
@@ -29,10 +33,15 @@ interface InstallStats {
   copiedFiles: number;
   overwrittenFiles: number;
   skippedFiles: number;
+  copiedFilePaths: string[];
+  overwrittenFilePaths: string[];
+  skippedFilePaths: string[];
 }
 
 const DEFAULT_SETTINGS: OwenWikiPluginSettings = {
   autoInstallOnFirstActivation: true,
+  initialSetupPromptDismissed: false,
+  setupPreset: 'full',
   overwriteExistingFiles: false,
   includeScripts: true,
   includeAssets: true,
@@ -70,8 +79,18 @@ export default class OwenWikiPlugin extends Plugin {
 
     this.addSettingTab(new OwenWikiSettingTab(this.app, this));
 
-    if (this.settings.autoInstallOnFirstActivation && this.settings.installedTemplateVersion !== TEMPLATE_VERSION) {
-      await this.installTemplate(false);
+    if (
+      this.settings.autoInstallOnFirstActivation
+      && this.settings.installedTemplateVersion !== TEMPLATE_VERSION
+      && !this.settings.initialSetupPromptDismissed
+    ) {
+      const confirmed = await this.confirmInitialSetup();
+      if (confirmed) {
+        await this.installTemplate(false);
+      } else {
+        this.settings.initialSetupPromptDismissed = true;
+        await this.saveSettings();
+      }
     }
   }
 
@@ -83,6 +102,36 @@ export default class OwenWikiPlugin extends Plugin {
     await this.saveData(this.settings);
   }
 
+  async confirmInitialSetup(): Promise<boolean> {
+    return new Promise((resolve) => {
+      new InitialSetupModal(this.app, (confirmed) => resolve(confirmed)).open();
+    });
+  }
+
+  async applyPreset(preset: SetupPreset): Promise<void> {
+    this.settings.setupPreset = preset;
+
+    if (preset === 'minimal') {
+      this.settings.includeScripts = false;
+      this.settings.includeAssets = false;
+      this.settings.includeGithubWorkflow = false;
+    }
+
+    if (preset === 'standard') {
+      this.settings.includeScripts = true;
+      this.settings.includeAssets = true;
+      this.settings.includeGithubWorkflow = false;
+    }
+
+    if (preset === 'full') {
+      this.settings.includeScripts = true;
+      this.settings.includeAssets = true;
+      this.settings.includeGithubWorkflow = true;
+    }
+
+    await this.saveSettings();
+  }
+
   async installTemplate(forceOverwrite: boolean): Promise<void> {
     const overwrite = forceOverwrite || this.settings.overwriteExistingFiles;
     const today = this.today();
@@ -92,6 +141,9 @@ export default class OwenWikiPlugin extends Plugin {
       copiedFiles: 0,
       overwrittenFiles: 0,
       skippedFiles: 0,
+      copiedFilePaths: [],
+      overwrittenFilePaths: [],
+      skippedFilePaths: [],
     };
 
     try {
@@ -106,10 +158,12 @@ export default class OwenWikiPlugin extends Plugin {
       const summary = `folders ${stats.createdFolders}, copied ${stats.copiedFiles}, overwritten ${stats.overwrittenFiles}, skipped ${stats.skippedFiles}`;
       this.settings.installedTemplateVersion = TEMPLATE_VERSION;
       this.settings.installedAt = new Date().toISOString();
+      this.settings.initialSetupPromptDismissed = true;
       this.settings.lastInstallSummary = summary;
       await this.saveSettings();
 
       new Notice(`Owen Wiki template configured: ${summary}`);
+      new InstallReportModal(this.app, stats).open();
     } catch (error) {
       console.error('Owen Wiki template setup failed', error);
       const message = error instanceof Error ? error.message : String(error);
@@ -292,6 +346,7 @@ export default class OwenWikiPlugin extends Plugin {
 
     if (exists && !overwrite) {
       stats.skippedFiles += 1;
+      stats.skippedFilePaths.push(normalizedPath);
       return;
     }
 
@@ -304,8 +359,10 @@ export default class OwenWikiPlugin extends Plugin {
 
     if (exists) {
       stats.overwrittenFiles += 1;
+      stats.overwrittenFilePaths.push(normalizedPath);
     } else {
       stats.copiedFiles += 1;
+      stats.copiedFilePaths.push(normalizedPath);
     }
   }
 
@@ -353,6 +410,100 @@ export default class OwenWikiPlugin extends Plugin {
   }
 }
 
+class InitialSetupModal extends Modal {
+  private readonly onDecision: (confirmed: boolean) => void;
+  private resolved = false;
+
+  constructor(app: App, onDecision: (confirmed: boolean) => void) {
+    super(app);
+    this.onDecision = onDecision;
+  }
+
+  onOpen(): void {
+    const { contentEl } = this;
+    contentEl.empty();
+
+    contentEl.createEl('h2', { text: 'Configure Owen Wiki template?' });
+    contentEl.createEl('p', {
+      text: 'This will create the Owen-WIKI folder structure and starter template files in the current vault. Existing files are skipped unless overwrite is enabled in settings.',
+    });
+
+    new Setting(contentEl)
+      .addButton((button) => button
+        .setButtonText('Configure')
+        .setCta()
+        .onClick(() => this.resolve(true)))
+      .addButton((button) => button
+        .setButtonText('Not now')
+        .onClick(() => this.resolve(false)));
+  }
+
+  onClose(): void {
+    if (!this.resolved) {
+      this.resolved = true;
+      this.onDecision(false);
+    }
+  }
+
+  private resolve(confirmed: boolean): void {
+    if (this.resolved) {
+      return;
+    }
+
+    this.resolved = true;
+    this.onDecision(confirmed);
+    this.close();
+  }
+}
+
+class InstallReportModal extends Modal {
+  private readonly stats: InstallStats;
+
+  constructor(app: App, stats: InstallStats) {
+    super(app);
+    this.stats = stats;
+  }
+
+  onOpen(): void {
+    const { contentEl } = this;
+    contentEl.empty();
+
+    contentEl.createEl('h2', { text: 'Owen Wiki setup report' });
+    contentEl.createEl('p', {
+      text: `Folders created: ${this.stats.createdFolders}. Files copied: ${this.stats.copiedFiles}. Files overwritten: ${this.stats.overwrittenFiles}. Files skipped: ${this.stats.skippedFiles}.`,
+    });
+
+    this.renderFileGroup(contentEl, 'Copied files', this.stats.copiedFilePaths);
+    this.renderFileGroup(contentEl, 'Overwritten files', this.stats.overwrittenFilePaths);
+    this.renderFileGroup(contentEl, 'Skipped existing files', this.stats.skippedFilePaths);
+
+    new Setting(contentEl)
+      .addButton((button) => button
+        .setButtonText('Close')
+        .setCta()
+        .onClick(() => this.close()));
+  }
+
+  private renderFileGroup(containerEl: HTMLElement, title: string, paths: string[]): void {
+    const details = containerEl.createEl('details');
+    details.createEl('summary', { text: `${title} (${paths.length})` });
+
+    if (paths.length === 0) {
+      details.createEl('p', { text: 'None' });
+      return;
+    }
+
+    const list = details.createEl('ul');
+    for (const path of paths.slice(0, 25)) {
+      list.createEl('li', { text: path });
+    }
+
+    if (paths.length > 25) {
+      details.createEl('p', { text: `${paths.length - 25} more files not shown.` });
+    }
+  }
+}
+
 class OwenWikiSettingTab extends PluginSettingTab {
   plugin: OwenWikiPlugin;
 
@@ -371,9 +522,27 @@ class OwenWikiSettingTab extends PluginSettingTab {
     const installed = this.plugin.settings.installedTemplateVersion || 'not installed';
     status.createEl('div', { text: `Template version: ${TEMPLATE_VERSION}` });
     status.createEl('div', { text: `Installed version: ${installed}` });
+    status.createEl('a', {
+      attr: { href: RELEASE_URL },
+      text: 'View current release',
+    });
     if (this.plugin.settings.lastInstallSummary) {
       status.createEl('div', { text: `Last run: ${this.plugin.settings.lastInstallSummary}` });
     }
+
+    new Setting(containerEl)
+      .setName('Setup preset')
+      .setDesc('Choose how much of the Owen-WIKI kit should be installed by default.')
+      .addDropdown((dropdown) => dropdown
+        .addOption('minimal', 'Minimal: schema, wiki folders, templates')
+        .addOption('standard', 'Standard: scripts and assets')
+        .addOption('full', 'Full: scripts, assets, GitHub workflow')
+        .addOption('custom', 'Custom')
+        .setValue(this.plugin.settings.setupPreset)
+        .onChange(async (value) => {
+          await this.plugin.applyPreset(value as SetupPreset);
+          this.display();
+        }));
 
     new Setting(containerEl)
       .setName('Configure on first activation')
@@ -401,8 +570,10 @@ class OwenWikiSettingTab extends PluginSettingTab {
       .addToggle((toggle) => toggle
         .setValue(this.plugin.settings.includeScripts)
         .onChange(async (value) => {
+          this.plugin.settings.setupPreset = 'custom';
           this.plugin.settings.includeScripts = value;
           await this.plugin.saveSettings();
+          this.display();
         }));
 
     new Setting(containerEl)
@@ -411,8 +582,10 @@ class OwenWikiSettingTab extends PluginSettingTab {
       .addToggle((toggle) => toggle
         .setValue(this.plugin.settings.includeAssets)
         .onChange(async (value) => {
+          this.plugin.settings.setupPreset = 'custom';
           this.plugin.settings.includeAssets = value;
           await this.plugin.saveSettings();
+          this.display();
         }));
 
     new Setting(containerEl)
@@ -421,8 +594,10 @@ class OwenWikiSettingTab extends PluginSettingTab {
       .addToggle((toggle) => toggle
         .setValue(this.plugin.settings.includeGithubWorkflow)
         .onChange(async (value) => {
+          this.plugin.settings.setupPreset = 'custom';
           this.plugin.settings.includeGithubWorkflow = value;
           await this.plugin.saveSettings();
+          this.display();
         }));
 
     new Setting(containerEl)

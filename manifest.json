@@ -1,7 +1,7 @@
 {
   "id": "owen-wiki-plugin",
   "name": "Owen Wiki Template",
-  "version": "1.17.0",
+  "version": "1.18.0",
   "minAppVersion": "1.5.0",
   "description": "Installs and refreshes the Owen-WIKI LLM wiki template kit in an Obsidian vault.",
   "author": "towishy",
