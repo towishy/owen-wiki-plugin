@@ -8,7 +8,7 @@ Owen Wiki Template is an Obsidian plugin that installs the Owen-WIKI Template Ki
 
 ### Manual Install
 
-1. Download `owen-wiki-1.20.1.zip` from the latest GitHub Release.
+1. Download `owen-wiki-1.20.2.zip` from the latest GitHub Release.
 2. Extract it into `<your-vault>/.obsidian/plugins/owen-wiki/`.
 3. Open Obsidian and enable community plugins if prompted.
 4. Enable **Owen Wiki Template**.
@@ -87,4 +87,4 @@ npm install
 npm run package
 ```
 
-The package script creates `release/owen-wiki-1.20.1.zip`, containing the Obsidian install files and bundled template kit.
+The package script creates `release/owen-wiki-1.20.2.zip`, containing the Obsidian install files and bundled template kit.

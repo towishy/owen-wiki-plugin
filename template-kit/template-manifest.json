@@ -1,7 +1,7 @@
 {
-  "templateVersion": "1.20.1",
+  "templateVersion": "1.20.2",
   "source": "d:\\Github\\owen-wiki",
-  "syncedAt": "2026-06-11T12:35:32.166Z",
+  "syncedAt": "2026-06-11T12:51:17.179Z",
   "fileCount": 75,
   "files": [
     ".github/workflows/wiki-lint.yml",

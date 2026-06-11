@@ -7,11 +7,19 @@ import {
     type UiLanguage,
 } from './setup-utils';
 
-const TEMPLATE_VERSION = '1.20.1';
+const TEMPLATE_VERSION = '1.20.2';
 const TEMPLATE_ROOT = 'template-kit';
-const RELEASE_URL = 'https://github.com/towishy/owen-wiki-plugin/releases/tag/1.20.1';
+const RELEASE_URL = 'https://github.com/towishy/owen-wiki-plugin/releases/tag/1.20.2';
 const START_DOCUMENT = 'wiki/synthesis/overview.md';
 type OperationMode = 'install' | 'upgrade' | 'repair' | 'dry-run';
+
+function normalizeUiLanguage(language: unknown): UiLanguage {
+  return language === 'ko' ? 'ko' : 'en';
+}
+
+function isSettingsRecord(value: unknown): value is Partial<OwenWikiPluginSettings> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
 
 interface OwenWikiPluginSettings {
   autoInstallOnFirstActivation: boolean;
@@ -102,42 +110,42 @@ export default class OwenWikiPlugin extends Plugin {
 
   async onload(): Promise<void> {
     await this.loadSettings();
-    const ko = this.settings.uiLanguage === 'ko';
+    const ko = this.currentLanguage() === 'ko';
 
     this.addRibbonIcon('folder-plus', ko ? 'Owen Wiki 구성' : 'Owen Wiki setup', () => this.installTemplate(false, { operation: 'install' }));
 
     this.addCommand({
-      id: 'configure-owen-wiki-template',
+      id: 'configure-template',
       name: ko ? 'Owen Wiki 템플릿 구성' : 'Configure Owen Wiki template',
       callback: () => this.installTemplate(false, { operation: 'install' }),
     });
 
     this.addCommand({
-      id: 'preview-owen-wiki-template-setup',
+      id: 'preview-template-setup',
       name: ko ? 'Owen Wiki 템플릿 구성 미리보기' : 'Preview Owen Wiki template setup',
       callback: () => this.installTemplate(false, { dryRun: true, operation: 'dry-run' }),
     });
 
     this.addCommand({
-      id: 'upgrade-owen-wiki-template-files',
+      id: 'upgrade-template-files',
       name: ko ? 'Owen Wiki 템플릿 파일 업그레이드' : 'Upgrade Owen Wiki template files',
       callback: () => this.installTemplate(true, { operation: 'upgrade' }),
     });
 
     this.addCommand({
-      id: 'repair-owen-wiki-template',
+      id: 'repair-template',
       name: ko ? '누락된 Owen Wiki 파일 복구' : 'Repair missing Owen Wiki files',
       callback: () => this.installTemplate(false, { operation: 'repair' }),
     });
 
     this.addCommand({
-      id: 'check-owen-wiki-health',
+      id: 'check-health',
       name: ko ? 'Owen Wiki 상태 점검' : 'Check Owen Wiki health',
       callback: () => this.openHealthCheck(),
     });
 
     this.addCommand({
-      id: 'refresh-owen-wiki-template-files',
+      id: 'refresh-template-files',
       name: ko ? 'Owen Wiki 템플릿 파일 새로 고침' : 'Refresh Owen Wiki template files',
       callback: () => this.installTemplate(true, { operation: 'upgrade' }),
     });
@@ -160,7 +168,13 @@ export default class OwenWikiPlugin extends Plugin {
   }
 
   async loadSettings(): Promise<void> {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const loadedData = (await this.loadData()) as unknown;
+    const savedSettings = isSettingsRecord(loadedData) ? loadedData : {};
+    this.settings = {
+      ...DEFAULT_SETTINGS,
+      ...savedSettings,
+      uiLanguage: normalizeUiLanguage(savedSettings.uiLanguage),
+    };
   }
 
   async saveSettings(): Promise<void> {
@@ -169,7 +183,7 @@ export default class OwenWikiPlugin extends Plugin {
 
   async confirmInitialSetup(): Promise<boolean> {
     return new Promise((resolve) => {
-      new InitialSetupModal(this.app, this.settings.uiLanguage, (confirmed) => resolve(confirmed)).open();
+      new InitialSetupModal(this.app, this.currentLanguage(), (confirmed) => resolve(confirmed)).open();
     });
   }
 
@@ -235,7 +249,7 @@ export default class OwenWikiPlugin extends Plugin {
 
       const noticePrefix = dryRun ? this.text('previewReady') : this.text('configured');
       new Notice(`${noticePrefix}: ${summary}`);
-      new InstallReportModal(this.app, this.settings.uiLanguage, stats).open();
+      new InstallReportModal(this.app, this.currentLanguage(), stats).open();
 
       if (!dryRun && this.settings.openStartDocumentAfterSetup) {
         await this.openStartDocument();
@@ -250,7 +264,7 @@ export default class OwenWikiPlugin extends Plugin {
   async openHealthCheck(): Promise<void> {
     try {
       const result = await this.runHealthCheck();
-      new HealthCheckModal(this.app, this.settings.uiLanguage, result).open();
+      new HealthCheckModal(this.app, this.currentLanguage(), result).open();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       new Notice(`${this.text('healthFailed')}: ${message}`);
@@ -629,7 +643,11 @@ export default class OwenWikiPlugin extends Plugin {
       setupFailed: 'Owen Wiki template setup failed',
       healthFailed: 'Owen Wiki health check failed',
     };
-    return this.settings.uiLanguage === 'ko' ? ko[key] : en[key];
+    return this.currentLanguage() === 'ko' ? ko[key] : en[key];
+  }
+
+  currentLanguage(): UiLanguage {
+    return normalizeUiLanguage(this.settings.uiLanguage);
   }
 
   private templatePath(relativePath: string): string {
@@ -674,7 +692,9 @@ class InitialSetupModal extends Modal {
     const { contentEl } = this;
     contentEl.empty();
 
-    contentEl.createEl('h2', { text: this.language === 'ko' ? 'Owen Wiki 템플릿을 구성할까요?' : 'Configure Owen Wiki template?' });
+    new Setting(contentEl)
+      .setName(this.language === 'ko' ? 'Owen Wiki 템플릿을 구성할까요?' : 'Configure Owen Wiki template?')
+      .setHeading();
     contentEl.createEl('p', {
       text: this.language === 'ko'
         ? '현재 볼트에 Owen-WIKI 폴더 구조와 시작 템플릿 파일을 생성합니다. 덮어쓰기를 켜지 않는 한 기존 파일은 건너뜁니다.'
@@ -723,7 +743,9 @@ class InstallReportModal extends Modal {
     const { contentEl } = this;
     contentEl.empty();
 
-    contentEl.createEl('h2', { text: this.language === 'ko' ? 'Owen Wiki 설정 리포트' : 'Owen Wiki setup report' });
+    new Setting(contentEl)
+      .setName(this.language === 'ko' ? 'Owen Wiki 설정 리포트' : 'Owen Wiki setup report')
+      .setHeading();
     contentEl.createEl('p', {
       text: this.language === 'ko'
         ? `작업: ${this.operationLabel()}. 폴더: ${this.stats.createdFolders}. 복사: ${this.stats.copiedFiles}. 덮어쓰기: ${this.stats.overwrittenFiles}. 건너뜀: ${this.stats.skippedFiles}. 백업: ${this.stats.backedUpFiles}.`
@@ -791,7 +813,9 @@ class HealthCheckModal extends Modal {
     const { contentEl } = this;
     contentEl.empty();
 
-    contentEl.createEl('h2', { text: this.language === 'ko' ? 'Owen Wiki 상태 점검' : 'Owen Wiki health check' });
+    new Setting(contentEl)
+      .setName(this.language === 'ko' ? 'Owen Wiki 상태 점검' : 'Owen Wiki health check')
+      .setHeading();
     contentEl.createEl('p', {
       text: this.language === 'ko'
         ? `누락 폴더: ${this.result.missingFolders.length}. 누락 파일: ${this.result.missingFiles.length}. 템플릿 매니페스트: ${this.result.templateManifestFound ? '있음' : '없음'}.`
@@ -839,11 +863,18 @@ class OwenWikiSettingTab extends PluginSettingTab {
   }
 
   display(): void {
+    void this.renderSettings();
+  }
+
+  private async renderSettings(): Promise<void> {
+    await this.plugin.loadSettings();
     const { containerEl } = this;
-    const ko = this.plugin.settings.uiLanguage === 'ko';
+    const ko = this.plugin.currentLanguage() === 'ko';
     containerEl.empty();
 
-    containerEl.createEl('h2', { text: 'Owen Wiki Template' });
+    new Setting(containerEl)
+      .setName('Owen Wiki Template')
+      .setHeading();
 
     const status = containerEl.createDiv({ cls: 'owen-wiki-plugin-status' });
     const installed = this.plugin.settings.installedTemplateVersion || (ko ? '설치되지 않음' : 'not installed');
@@ -868,9 +899,9 @@ class OwenWikiSettingTab extends PluginSettingTab {
       .addDropdown((dropdown) => dropdown
         .addOption('en', 'English')
         .addOption('ko', '한국어')
-        .setValue(this.plugin.settings.uiLanguage)
+        .setValue(this.plugin.currentLanguage())
         .onChange(async (value) => {
-          this.plugin.settings.uiLanguage = value as UiLanguage;
+          this.plugin.settings.uiLanguage = normalizeUiLanguage(value);
           await this.plugin.saveSettings();
           this.display();
         }));
