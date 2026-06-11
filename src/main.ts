@@ -7,9 +7,9 @@ import {
     type UiLanguage,
 } from './setup-utils';
 
-const TEMPLATE_VERSION = '1.20';
+const TEMPLATE_VERSION = '1.20.1';
 const TEMPLATE_ROOT = 'template-kit';
-const RELEASE_URL = 'https://github.com/towishy/owen-wiki-plugin/releases/tag/1.20';
+const RELEASE_URL = 'https://github.com/towishy/owen-wiki-plugin/releases/tag/1.20.1';
 const START_DOCUMENT = 'wiki/synthesis/overview.md';
 type OperationMode = 'install' | 'upgrade' | 'repair' | 'dry-run';
 
@@ -102,42 +102,43 @@ export default class OwenWikiPlugin extends Plugin {
 
   async onload(): Promise<void> {
     await this.loadSettings();
+    const ko = this.settings.uiLanguage === 'ko';
 
-    this.addRibbonIcon('folder-plus', 'Owen Wiki setup', () => this.installTemplate(false, { operation: 'install' }));
+    this.addRibbonIcon('folder-plus', ko ? 'Owen Wiki 구성' : 'Owen Wiki setup', () => this.installTemplate(false, { operation: 'install' }));
 
     this.addCommand({
       id: 'configure-owen-wiki-template',
-      name: 'Configure Owen Wiki template',
+      name: ko ? 'Owen Wiki 템플릿 구성' : 'Configure Owen Wiki template',
       callback: () => this.installTemplate(false, { operation: 'install' }),
     });
 
     this.addCommand({
       id: 'preview-owen-wiki-template-setup',
-      name: 'Preview Owen Wiki template setup',
+      name: ko ? 'Owen Wiki 템플릿 구성 미리보기' : 'Preview Owen Wiki template setup',
       callback: () => this.installTemplate(false, { dryRun: true, operation: 'dry-run' }),
     });
 
     this.addCommand({
       id: 'upgrade-owen-wiki-template-files',
-      name: 'Upgrade Owen Wiki template files',
+      name: ko ? 'Owen Wiki 템플릿 파일 업그레이드' : 'Upgrade Owen Wiki template files',
       callback: () => this.installTemplate(true, { operation: 'upgrade' }),
     });
 
     this.addCommand({
       id: 'repair-owen-wiki-template',
-      name: 'Repair missing Owen Wiki files',
+      name: ko ? '누락된 Owen Wiki 파일 복구' : 'Repair missing Owen Wiki files',
       callback: () => this.installTemplate(false, { operation: 'repair' }),
     });
 
     this.addCommand({
       id: 'check-owen-wiki-health',
-      name: 'Check Owen Wiki health',
+      name: ko ? 'Owen Wiki 상태 점검' : 'Check Owen Wiki health',
       callback: () => this.openHealthCheck(),
     });
 
     this.addCommand({
       id: 'refresh-owen-wiki-template-files',
-      name: 'Refresh Owen Wiki template files',
+      name: ko ? 'Owen Wiki 템플릿 파일 새로 고침' : 'Refresh Owen Wiki template files',
       callback: () => this.installTemplate(true, { operation: 'upgrade' }),
     });
 
@@ -724,10 +725,12 @@ class InstallReportModal extends Modal {
 
     contentEl.createEl('h2', { text: this.language === 'ko' ? 'Owen Wiki 설정 리포트' : 'Owen Wiki setup report' });
     contentEl.createEl('p', {
-      text: `Operation: ${this.stats.operation}. Folders: ${this.stats.createdFolders}. Copied: ${this.stats.copiedFiles}. Overwritten: ${this.stats.overwrittenFiles}. Skipped: ${this.stats.skippedFiles}. Backups: ${this.stats.backedUpFiles}.`,
+      text: this.language === 'ko'
+        ? `작업: ${this.operationLabel()}. 폴더: ${this.stats.createdFolders}. 복사: ${this.stats.copiedFiles}. 덮어쓰기: ${this.stats.overwrittenFiles}. 건너뜀: ${this.stats.skippedFiles}. 백업: ${this.stats.backedUpFiles}.`
+        : `Operation: ${this.stats.operation}. Folders: ${this.stats.createdFolders}. Copied: ${this.stats.copiedFiles}. Overwritten: ${this.stats.overwrittenFiles}. Skipped: ${this.stats.skippedFiles}. Backups: ${this.stats.backedUpFiles}.`,
     });
     if (this.stats.reportPath) {
-      contentEl.createEl('p', { text: `Report saved: ${this.stats.reportPath}` });
+      contentEl.createEl('p', { text: this.language === 'ko' ? `리포트 저장 위치: ${this.stats.reportPath}` : `Report saved: ${this.stats.reportPath}` });
     }
 
     this.renderFileGroup(contentEl, this.language === 'ko' ? '생성 예정/생성 폴더' : 'Created folders', this.stats.createdFolderPaths);
@@ -748,7 +751,7 @@ class InstallReportModal extends Modal {
     details.createEl('summary', { text: `${title} (${paths.length})` });
 
     if (paths.length === 0) {
-      details.createEl('p', { text: 'None' });
+      details.createEl('p', { text: this.language === 'ko' ? '없음' : 'None' });
       return;
     }
 
@@ -759,8 +762,18 @@ class InstallReportModal extends Modal {
     }
 
     if (preview.hiddenCount > 0) {
-      details.createEl('p', { text: `${preview.hiddenCount} more files not shown.` });
+      details.createEl('p', { text: this.language === 'ko' ? `${preview.hiddenCount}개 파일은 더 표시하지 않았습니다.` : `${preview.hiddenCount} more files not shown.` });
     }
+  }
+
+  private operationLabel(): string {
+    const labels: Record<OperationMode, string> = {
+      install: '설치',
+      upgrade: '업그레이드',
+      repair: '복구',
+      'dry-run': '미리보기',
+    };
+    return labels[this.stats.operation];
   }
 }
 
@@ -780,11 +793,15 @@ class HealthCheckModal extends Modal {
 
     contentEl.createEl('h2', { text: this.language === 'ko' ? 'Owen Wiki 상태 점검' : 'Owen Wiki health check' });
     contentEl.createEl('p', {
-      text: `Missing folders: ${this.result.missingFolders.length}. Missing files: ${this.result.missingFiles.length}. Template manifest: ${this.result.templateManifestFound ? 'found' : 'missing'}.`,
+      text: this.language === 'ko'
+        ? `누락 폴더: ${this.result.missingFolders.length}. 누락 파일: ${this.result.missingFiles.length}. 템플릿 매니페스트: ${this.result.templateManifestFound ? '있음' : '없음'}.`
+        : `Missing folders: ${this.result.missingFolders.length}. Missing files: ${this.result.missingFiles.length}. Template manifest: ${this.result.templateManifestFound ? 'found' : 'missing'}.`,
     });
     if (this.result.templateManifestFound) {
       contentEl.createEl('p', {
-        text: `Template manifest version: ${this.result.templateManifestVersion || 'unknown'}, files: ${this.result.templateManifestFileCount}`,
+        text: this.language === 'ko'
+          ? `템플릿 매니페스트 버전: ${this.result.templateManifestVersion || '알 수 없음'}, 파일: ${this.result.templateManifestFileCount}`
+          : `Template manifest version: ${this.result.templateManifestVersion || 'unknown'}, files: ${this.result.templateManifestFileCount}`,
       });
     }
 
@@ -802,7 +819,7 @@ class HealthCheckModal extends Modal {
     const details = containerEl.createEl('details');
     details.createEl('summary', { text: `${title} (${paths.length})` });
     if (paths.length === 0) {
-      details.createEl('p', { text: 'None' });
+      details.createEl('p', { text: this.language === 'ko' ? '없음' : 'None' });
       return;
     }
 
@@ -829,9 +846,9 @@ class OwenWikiSettingTab extends PluginSettingTab {
     containerEl.createEl('h2', { text: 'Owen Wiki Template' });
 
     const status = containerEl.createDiv({ cls: 'owen-wiki-plugin-status' });
-    const installed = this.plugin.settings.installedTemplateVersion || 'not installed';
-    status.createEl('div', { text: `Template version: ${TEMPLATE_VERSION}` });
-    status.createEl('div', { text: `Installed version: ${installed}` });
+    const installed = this.plugin.settings.installedTemplateVersion || (ko ? '설치되지 않음' : 'not installed');
+    status.createEl('div', { text: ko ? `템플릿 버전: ${TEMPLATE_VERSION}` : `Template version: ${TEMPLATE_VERSION}` });
+    status.createEl('div', { text: ko ? `설치된 버전: ${installed}` : `Installed version: ${installed}` });
     status.createEl('a', {
       attr: { href: RELEASE_URL },
       text: ko ? '현재 릴리즈 보기' : 'View current release',
@@ -842,7 +859,7 @@ class OwenWikiSettingTab extends PluginSettingTab {
         : 'Mobile note: vault structure and documents can be created on mobile, but Python/PowerShell scripts are desktop-oriented.',
     });
     if (this.plugin.settings.lastInstallSummary) {
-      status.createEl('div', { text: `Last run: ${this.plugin.settings.lastInstallSummary}` });
+      status.createEl('div', { text: ko ? `마지막 실행: ${this.plugin.settings.lastInstallSummary}` : `Last run: ${this.plugin.settings.lastInstallSummary}` });
     }
 
     new Setting(containerEl)
@@ -859,13 +876,13 @@ class OwenWikiSettingTab extends PluginSettingTab {
         }));
 
     new Setting(containerEl)
-      .setName('Setup preset')
-      .setDesc('Choose how much of the Owen-WIKI kit should be installed by default.')
+      .setName(ko ? '설치 프리셋' : 'Setup preset')
+      .setDesc(ko ? 'Owen-WIKI 킷을 기본적으로 어느 범위까지 설치할지 선택합니다.' : 'Choose how much of the Owen-WIKI kit should be installed by default.')
       .addDropdown((dropdown) => dropdown
-        .addOption('minimal', 'Minimal: schema, wiki folders, templates')
-        .addOption('standard', 'Standard: scripts and assets')
-        .addOption('full', 'Full: scripts, assets, GitHub workflow')
-        .addOption('custom', 'Custom')
+        .addOption('minimal', ko ? '최소: 스키마, 위키 폴더, 템플릿' : 'Minimal: schema, wiki folders, templates')
+        .addOption('standard', ko ? '표준: 스크립트와 자산 포함' : 'Standard: scripts and assets')
+        .addOption('full', ko ? '전체: 스크립트, 자산, GitHub 워크플로 포함' : 'Full: scripts, assets, GitHub workflow')
+        .addOption('custom', ko ? '사용자 지정' : 'Custom')
         .setValue(this.plugin.settings.setupPreset)
         .onChange(async (value) => {
           await this.plugin.applyPreset(value as SetupPreset);
@@ -873,8 +890,8 @@ class OwenWikiSettingTab extends PluginSettingTab {
         }));
 
     new Setting(containerEl)
-      .setName('Configure on first activation')
-      .setDesc('Create the Owen-WIKI vault structure automatically when this plugin is first enabled.')
+      .setName(ko ? '첫 활성화 시 구성' : 'Configure on first activation')
+      .setDesc(ko ? '플러그인을 처음 활성화할 때 Owen-WIKI 볼트 구조를 자동으로 구성합니다.' : 'Create the Owen-WIKI vault structure automatically when this plugin is first enabled.')
       .addToggle((toggle) => toggle
         .setValue(this.plugin.settings.autoInstallOnFirstActivation)
         .onChange(async (value) => {
@@ -883,8 +900,8 @@ class OwenWikiSettingTab extends PluginSettingTab {
         }));
 
     new Setting(containerEl)
-      .setName('Overwrite existing files')
-      .setDesc('Replace existing template files during manual setup. Leave this off to preserve vault edits.')
+      .setName(ko ? '기존 파일 덮어쓰기' : 'Overwrite existing files')
+      .setDesc(ko ? '수동 구성 중 기존 템플릿 파일을 교체합니다. 볼트의 기존 편집을 보존하려면 끄세요.' : 'Replace existing template files during manual setup. Leave this off to preserve vault edits.')
       .addToggle((toggle) => toggle
         .setValue(this.plugin.settings.overwriteExistingFiles)
         .onChange(async (value) => {
@@ -923,8 +940,8 @@ class OwenWikiSettingTab extends PluginSettingTab {
         }));
 
     new Setting(containerEl)
-      .setName('Include automation scripts')
-      .setDesc('Copy the Owen-WIKI Python, PowerShell, shell, and YAML automation files into scripts/.')
+      .setName(ko ? '자동화 스크립트 포함' : 'Include automation scripts')
+      .setDesc(ko ? 'Owen-WIKI Python, PowerShell, shell, YAML 자동화 파일을 scripts/에 복사합니다.' : 'Copy the Owen-WIKI Python, PowerShell, shell, and YAML automation files into scripts/.')
       .addToggle((toggle) => toggle
         .setValue(this.plugin.settings.includeScripts)
         .onChange(async (value) => {
@@ -935,8 +952,8 @@ class OwenWikiSettingTab extends PluginSettingTab {
         }));
 
     new Setting(containerEl)
-      .setName('Include visual assets')
-      .setDesc('Copy the SVG assets used by the Owen-WIKI README and documentation.')
+      .setName(ko ? '시각 자산 포함' : 'Include visual assets')
+      .setDesc(ko ? 'Owen-WIKI README와 문서에서 사용하는 SVG 자산을 복사합니다.' : 'Copy the SVG assets used by the Owen-WIKI README and documentation.')
       .addToggle((toggle) => toggle
         .setValue(this.plugin.settings.includeAssets)
         .onChange(async (value) => {
@@ -947,8 +964,8 @@ class OwenWikiSettingTab extends PluginSettingTab {
         }));
 
     new Setting(containerEl)
-      .setName('Include GitHub Actions workflow')
-      .setDesc('Copy the wiki quality-gate workflow into .github/workflows/.')
+      .setName(ko ? 'GitHub Actions 워크플로 포함' : 'Include GitHub Actions workflow')
+      .setDesc(ko ? '위키 품질 게이트 워크플로를 .github/workflows/에 복사합니다.' : 'Copy the wiki quality-gate workflow into .github/workflows/.')
       .addToggle((toggle) => toggle
         .setValue(this.plugin.settings.includeGithubWorkflow)
         .onChange(async (value) => {
@@ -959,7 +976,7 @@ class OwenWikiSettingTab extends PluginSettingTab {
         }));
 
     new Setting(containerEl)
-      .setName(ko ? 'Dry Run 미리보기' : 'Dry run preview')
+      .setName(ko ? '실행 전 미리보기' : 'Dry run preview')
       .setDesc(ko ? '실제 파일을 만들지 않고 생성/복사/건너뜀 예정 목록을 확인합니다.' : 'Preview folders and files without writing anything to the vault.')
       .addButton((button) => button
         .setButtonText(ko ? '미리보기' : 'Preview')
@@ -987,10 +1004,10 @@ class OwenWikiSettingTab extends PluginSettingTab {
         }));
 
     new Setting(containerEl)
-      .setName('Run setup now')
-      .setDesc('Create missing folders and copy template files using the current settings.')
+      .setName(ko ? '지금 구성 실행' : 'Run setup now')
+      .setDesc(ko ? '현재 설정으로 누락된 폴더를 만들고 템플릿 파일을 복사합니다.' : 'Create missing folders and copy template files using the current settings.')
       .addButton((button) => button
-        .setButtonText('Configure')
+        .setButtonText(ko ? '구성' : 'Configure')
         .setCta()
         .onClick(async () => {
           await this.plugin.installTemplate(false, { operation: 'install' });
@@ -998,10 +1015,10 @@ class OwenWikiSettingTab extends PluginSettingTab {
         }));
 
     new Setting(containerEl)
-      .setName('Refresh now')
-      .setDesc('Upgrade template files and overwrite files for this run only.')
+      .setName(ko ? '지금 업그레이드' : 'Refresh now')
+      .setDesc(ko ? '이번 실행에서만 템플릿 파일을 업그레이드하고 기존 파일을 덮어씁니다.' : 'Upgrade template files and overwrite files for this run only.')
       .addButton((button) => button
-        .setButtonText('Upgrade')
+        .setButtonText(ko ? '업그레이드' : 'Upgrade')
         .onClick(async () => {
           await this.plugin.installTemplate(true, { operation: 'upgrade' });
           this.display();

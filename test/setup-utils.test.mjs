@@ -42,7 +42,7 @@ test('reportPreviewItems truncates long lists', () => {
 
 test('buildTemplateManifest normalizes and sorts file paths', () => {
   const manifest = buildTemplateManifest({
-    templateVersion: '1.20',
+    templateVersion: '1.20.1',
     source: 'D:/Github/owen-wiki',
     syncedAt: '2026-06-11T00:00:00.000Z',
     files: ['scripts\\b.py', './AGENTS.md', 'template-manifest.json'],
