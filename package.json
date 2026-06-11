@@ -1,6 +1,6 @@
 {
   "name": "owen-wiki-plugin",
-  "version": "1.20.3",
+  "version": "1.20.4",
   "description": "Installs the Owen-WIKI template kit into the active vault.",
   "main": "main.js",
   "type": "module",

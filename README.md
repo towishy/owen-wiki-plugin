@@ -87,4 +87,4 @@ npm install
 npm run package
 ```
 
-The package script creates `release/owen-wiki-1.20.3.zip` for local smoke tests. GitHub Releases publish only the supported Obsidian assets: `main.js`, `manifest.json`, and `styles.css`.
+The package script creates `release/owen-wiki-1.20.4.zip` for local smoke tests. GitHub Releases publish only the supported Obsidian assets: `main.js`, `manifest.json`, and `styles.css`.

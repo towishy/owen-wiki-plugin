@@ -8,9 +8,9 @@ import {
 } from './setup-utils';
 import { TEMPLATE_FILES, TEMPLATE_MANIFEST } from './template-kit.generated';
 
-const TEMPLATE_VERSION = '1.20.3';
+const TEMPLATE_VERSION = '1.20.4';
 const TEMPLATE_ROOT = 'template-kit';
-const RELEASE_URL = 'https://github.com/towishy/owen-wiki-plugin/releases/tag/1.20.3';
+const RELEASE_URL = 'https://github.com/towishy/owen-wiki-plugin/releases/tag/1.20.4';
 const START_DOCUMENT = 'wiki/synthesis/overview.md';
 type OperationMode = 'install' | 'upgrade' | 'repair' | 'dry-run';
 
