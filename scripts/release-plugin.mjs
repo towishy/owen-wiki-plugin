@@ -5,7 +5,7 @@ import process from 'process';
 
 const root = process.cwd();
 const manifest = JSON.parse(readFileSync(join(root, 'manifest.json'), 'utf8'));
-const releaseName = manifest.version.replace(/\.0$/, '');
+const releaseName = manifest.version;
 const zipPath = join(root, 'release', `${manifest.id}-${manifest.version}.zip`);
 const npmExecutable = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
