@@ -7,6 +7,11 @@ const root = process.cwd();
 const manifest = JSON.parse(readFileSync(join(root, 'manifest.json'), 'utf8'));
 const releaseName = manifest.version;
 const zipPath = join(root, 'release', `${manifest.id}-${manifest.version}.zip`);
+const releaseAssets = [
+  join(root, 'main.js'),
+  join(root, 'manifest.json'),
+  join(root, 'styles.css'),
+];
 const npmExecutable = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
 run(npmExecutable, ['run', 'test']);
@@ -21,10 +26,7 @@ run('gh', [
   'release',
   'create',
   releaseName,
-  zipPath,
-  join(root, 'main.js'),
-  join(root, 'manifest.json'),
-  join(root, 'styles.css'),
+  ...releaseAssets,
   '--repo',
   'towishy/owen-wiki-plugin',
   '--target',

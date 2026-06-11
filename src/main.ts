@@ -1,4 +1,4 @@
-import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, normalizePath } from 'obsidian';
+import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, normalizePath, type SettingDefinitionItem } from 'obsidian';
 import {
     formatInstallSummary,
     presetOptions,
@@ -6,6 +6,7 @@ import {
     type SetupPreset,
     type UiLanguage,
 } from './setup-utils';
+import { TEMPLATE_FILES, TEMPLATE_MANIFEST } from './template-kit.generated';
 
 const TEMPLATE_VERSION = '1.20.2';
 const TEMPLATE_ROOT = 'template-kit';
@@ -272,6 +273,10 @@ export default class OwenWikiPlugin extends Plugin {
   }
 
   private async ensureTemplateKitAvailable(): Promise<void> {
+    if (TEMPLATE_FILES['README.md']) {
+      return;
+    }
+
     const templateReadme = this.templatePath('README.md');
     if (!(await this.app.vault.adapter.exists(templateReadme))) {
       throw new Error(`Template kit not found at ${templateReadme}`);
@@ -406,11 +411,37 @@ export default class OwenWikiPlugin extends Plugin {
   }
 
   private async copyFolder(folder: FileTarget, today: string, overwrite: boolean, stats: InstallStats): Promise<void> {
-    const sourcePath = this.templatePath(folder.source);
     const targetPath = normalizePath(folder.target);
 
     await this.ensureFolder(targetPath, stats);
-    await this.copyFolderContents(sourcePath, targetPath, Boolean(folder.replaceDate), today, overwrite, stats);
+    if (this.hasEmbeddedFolder(folder.source)) {
+      await this.copyEmbeddedFolderContents(folder.source, targetPath, Boolean(folder.replaceDate), today, overwrite, stats);
+      return;
+    }
+
+    await this.copyFolderContents(this.templatePath(folder.source), targetPath, Boolean(folder.replaceDate), today, overwrite, stats);
+  }
+
+  private hasEmbeddedFolder(sourceFolder: string): boolean {
+    const prefix = `${normalizePath(sourceFolder)}/`;
+    return Object.keys(TEMPLATE_FILES).some((path) => path.startsWith(prefix));
+  }
+
+  private async copyEmbeddedFolderContents(
+    sourceFolder: string,
+    targetFolder: string,
+    replaceDate: boolean,
+    today: string,
+    overwrite: boolean,
+    stats: InstallStats,
+  ): Promise<void> {
+    const sourcePrefix = `${normalizePath(sourceFolder)}/`;
+    for (const sourcePath of Object.keys(TEMPLATE_FILES).filter((path) => path.startsWith(sourcePrefix)).sort()) {
+      const relativePath = sourcePath.slice(sourcePrefix.length);
+      const targetFile = normalizePath(`${targetFolder}/${relativePath}`);
+      const content = this.readEmbeddedTemplateFile(sourcePath, replaceDate, today);
+      await this.writeTextFile(targetFile, content, overwrite, stats);
+    }
   }
 
   private async copyFolderContents(
@@ -431,18 +462,33 @@ export default class OwenWikiPlugin extends Plugin {
 
     for (const file of listed.files.sort()) {
       const targetFile = normalizePath(`${targetFolder}/${this.basename(file)}`);
-      const content = await this.readTemplateFile(file, replaceDate, today);
+      const content = await this.readTemplateAdapterFile(file, replaceDate, today);
       await this.writeTextFile(targetFile, content, overwrite, stats);
     }
   }
 
   private async copyTextFile(file: FileTarget, today: string, overwrite: boolean, stats: InstallStats): Promise<void> {
-    const content = await this.readTemplateFile(this.templatePath(file.source), Boolean(file.replaceDate), today);
+    const content = await this.readTemplateFile(file.source, Boolean(file.replaceDate), today);
     await this.writeTextFile(file.target, content, overwrite, stats);
   }
 
-  private async readTemplateFile(path: string, replaceDate: boolean, today: string): Promise<string> {
-    const content = await this.app.vault.adapter.read(path);
+  private async readTemplateFile(sourcePath: string, replaceDate: boolean, today: string): Promise<string> {
+    const normalizedSourcePath = normalizePath(sourcePath);
+    if (TEMPLATE_FILES[normalizedSourcePath] !== undefined) {
+      return this.readEmbeddedTemplateFile(normalizedSourcePath, replaceDate, today);
+    }
+
+    const content = await this.app.vault.adapter.read(this.templatePath(normalizedSourcePath));
+    return replaceDate ? content.split('{{date}}').join(today) : content;
+  }
+
+  private async readTemplateAdapterFile(adapterPath: string, replaceDate: boolean, today: string): Promise<string> {
+    const content = await this.app.vault.adapter.read(adapterPath);
+    return replaceDate ? content.split('{{date}}').join(today) : content;
+  }
+
+  private readEmbeddedTemplateFile(sourcePath: string, replaceDate: boolean, today: string): string {
+    const content = TEMPLATE_FILES[sourcePath];
     return replaceDate ? content.split('{{date}}').join(today) : content;
   }
 
@@ -615,6 +661,13 @@ export default class OwenWikiPlugin extends Plugin {
       }
     }
 
+    if (TEMPLATE_MANIFEST) {
+      result.templateManifestFound = true;
+      result.templateManifestVersion = TEMPLATE_MANIFEST.templateVersion;
+      result.templateManifestFileCount = TEMPLATE_MANIFEST.fileCount;
+      return result;
+    }
+
     const manifestPath = this.templatePath('template-manifest.json');
     if (await this.app.vault.adapter.exists(manifestPath)) {
       result.templateManifestFound = true;
@@ -693,7 +746,7 @@ class InitialSetupModal extends Modal {
     contentEl.empty();
 
     new Setting(contentEl)
-      .setName(this.language === 'ko' ? 'Owen Wiki 템플릿을 구성할까요?' : 'Configure Owen Wiki template?')
+      .setName(this.language === 'ko' ? '템플릿을 구성할까요?' : 'Configure template?')
       .setHeading();
     contentEl.createEl('p', {
       text: this.language === 'ko'
@@ -744,7 +797,7 @@ class InstallReportModal extends Modal {
     contentEl.empty();
 
     new Setting(contentEl)
-      .setName(this.language === 'ko' ? 'Owen Wiki 설정 리포트' : 'Owen Wiki setup report')
+      .setName(this.language === 'ko' ? '설정 리포트' : 'Setup report')
       .setHeading();
     contentEl.createEl('p', {
       text: this.language === 'ko'
@@ -814,7 +867,7 @@ class HealthCheckModal extends Modal {
     contentEl.empty();
 
     new Setting(contentEl)
-      .setName(this.language === 'ko' ? 'Owen Wiki 상태 점검' : 'Owen Wiki health check')
+      .setName(this.language === 'ko' ? '상태 점검' : 'Health check')
       .setHeading();
     contentEl.createEl('p', {
       text: this.language === 'ko'
@@ -862,18 +915,26 @@ class OwenWikiSettingTab extends PluginSettingTab {
     this.plugin = plugin;
   }
 
-  display(): void {
-    void this.renderSettings();
+  getSettingDefinitions(): SettingDefinitionItem[] {
+    const ko = this.plugin.currentLanguage() === 'ko';
+    return [{
+      name: ko ? '템플릿 구성' : 'Template setup',
+      searchable: false,
+      render: (setting) => {
+        const containerEl = setting.settingEl;
+        containerEl.empty();
+        containerEl.addClass('owen-wiki-plugin-settings-root');
+        void this.renderSettings(containerEl);
+      },
+    }];
   }
 
-  private async renderSettings(): Promise<void> {
+  private async renderSettings(containerEl: HTMLElement): Promise<void> {
     await this.plugin.loadSettings();
-    const { containerEl } = this;
     const ko = this.plugin.currentLanguage() === 'ko';
-    containerEl.empty();
 
     new Setting(containerEl)
-      .setName('Owen Wiki Template')
+      .setName(ko ? '템플릿 구성' : 'Template setup')
       .setHeading();
 
     const status = containerEl.createDiv({ cls: 'owen-wiki-plugin-status' });
@@ -903,7 +964,7 @@ class OwenWikiSettingTab extends PluginSettingTab {
         .onChange(async (value) => {
           this.plugin.settings.uiLanguage = normalizeUiLanguage(value);
           await this.plugin.saveSettings();
-          this.display();
+          this.update();
         }));
 
     new Setting(containerEl)
@@ -917,7 +978,7 @@ class OwenWikiSettingTab extends PluginSettingTab {
         .setValue(this.plugin.settings.setupPreset)
         .onChange(async (value) => {
           await this.plugin.applyPreset(value as SetupPreset);
-          this.display();
+          this.update();
         }));
 
     new Setting(containerEl)
@@ -979,7 +1040,7 @@ class OwenWikiSettingTab extends PluginSettingTab {
           this.plugin.settings.setupPreset = 'custom';
           this.plugin.settings.includeScripts = value;
           await this.plugin.saveSettings();
-          this.display();
+          this.update();
         }));
 
     new Setting(containerEl)
@@ -991,7 +1052,7 @@ class OwenWikiSettingTab extends PluginSettingTab {
           this.plugin.settings.setupPreset = 'custom';
           this.plugin.settings.includeAssets = value;
           await this.plugin.saveSettings();
-          this.display();
+          this.update();
         }));
 
     new Setting(containerEl)
@@ -1003,7 +1064,7 @@ class OwenWikiSettingTab extends PluginSettingTab {
           this.plugin.settings.setupPreset = 'custom';
           this.plugin.settings.includeGithubWorkflow = value;
           await this.plugin.saveSettings();
-          this.display();
+          this.update();
         }));
 
     new Setting(containerEl)
@@ -1022,7 +1083,7 @@ class OwenWikiSettingTab extends PluginSettingTab {
         .setButtonText(ko ? '복구' : 'Repair')
         .onClick(async () => {
           await this.plugin.installTemplate(false, { operation: 'repair' });
-          this.display();
+          this.update();
         }));
 
     new Setting(containerEl)
@@ -1042,7 +1103,7 @@ class OwenWikiSettingTab extends PluginSettingTab {
         .setCta()
         .onClick(async () => {
           await this.plugin.installTemplate(false, { operation: 'install' });
-          this.display();
+          this.update();
         }));
 
     new Setting(containerEl)
@@ -1052,7 +1113,7 @@ class OwenWikiSettingTab extends PluginSettingTab {
         .setButtonText(ko ? '업그레이드' : 'Upgrade')
         .onClick(async () => {
           await this.plugin.installTemplate(true, { operation: 'upgrade' });
-          this.display();
+          this.update();
         }));
   }
 }
