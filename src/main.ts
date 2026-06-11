@@ -7,9 +7,9 @@ import {
     type UiLanguage,
 } from './setup-utils';
 
-const TEMPLATE_VERSION = '1.19';
+const TEMPLATE_VERSION = '1.20';
 const TEMPLATE_ROOT = 'template-kit';
-const RELEASE_URL = 'https://github.com/towishy/owen-wiki-plugin/releases/tag/1.19';
+const RELEASE_URL = 'https://github.com/towishy/owen-wiki-plugin/releases/tag/1.20';
 const START_DOCUMENT = 'wiki/synthesis/overview.md';
 type OperationMode = 'install' | 'upgrade' | 'repair' | 'dry-run';
 

@@ -32,5 +32,5 @@ jobs:
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
         with:
-          name: owen-wiki-plugin-package
-          path: release/owen-wiki-plugin-*.zip
+          name: owen-wiki-package
+          path: release/owen-wiki-*.zip

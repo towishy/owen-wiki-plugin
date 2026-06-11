@@ -2,7 +2,7 @@ import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFile
 import { dirname, join, resolve } from 'path';
 import { fileURLToPath } from 'url';
 
-const TEMPLATE_VERSION = '1.19';
+const TEMPLATE_VERSION = '1.20';
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const root = resolve(scriptDir, '..');
 const sourceRoot = resolve(process.argv[2] ?? process.env.OWEN_WIKI_SOURCE ?? join(root, '..', 'owen-wiki'));

@@ -19,7 +19,7 @@ npm test
 1. Copy the release files into a test vault plugin folder.
 
 ```powershell
-$pluginDir = 'D:\TEST\.obsidian\plugins\owen-wiki-plugin'
+$pluginDir = 'D:\TEST\.obsidian\plugins\owen-wiki'
 New-Item -ItemType Directory -Force $pluginDir | Out-Null
 Get-ChildItem -Path $pluginDir -Force | Remove-Item -Recurse -Force
 Copy-Item 'D:\Github\owen-wiki-plugin\main.js' $pluginDir -Force
@@ -32,7 +32,7 @@ Copy-Item 'D:\Github\owen-wiki-plugin\template-kit' (Join-Path $pluginDir 'templ
 
 ```json
 [
-  "owen-wiki-plugin"
+  "owen-wiki"
 ]
 ```
 
