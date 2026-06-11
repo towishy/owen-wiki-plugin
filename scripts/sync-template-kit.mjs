@@ -1,7 +1,8 @@
-import { cpSync, existsSync, mkdirSync, rmSync } from 'fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from 'fs';
 import { dirname, join, resolve } from 'path';
 import { fileURLToPath } from 'url';
 
+const TEMPLATE_VERSION = '1.19';
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const root = resolve(scriptDir, '..');
 const sourceRoot = resolve(process.argv[2] ?? process.env.OWEN_WIKI_SOURCE ?? join(root, '..', 'owen-wiki'));
@@ -44,4 +45,35 @@ for (const directory of directoryCopies) {
   });
 }
 
+const files = listFiles(targetRoot)
+  .filter((file) => file !== 'template-manifest.json')
+  .sort((left, right) => left.localeCompare(right));
+
+writeFileSync(join(targetRoot, 'template-manifest.json'), `${JSON.stringify({
+  templateVersion: TEMPLATE_VERSION,
+  source: sourceRoot,
+  syncedAt: new Date().toISOString(),
+  fileCount: files.length,
+  files,
+}, null, 2)}\n`);
+
 console.log(`Synced template-kit from ${sourceRoot}`);
+
+function listFiles(rootDir, currentDir = rootDir) {
+  const entries = readdirSync(currentDir, { withFileTypes: true });
+  const files = [];
+
+  for (const entry of entries) {
+    const absolutePath = join(currentDir, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...listFiles(rootDir, absolutePath));
+      continue;
+    }
+
+    if (entry.isFile() && statSync(absolutePath).isFile()) {
+      files.push(absolutePath.slice(rootDir.length + 1).replace(/\\/g, '/'));
+    }
+  }
+
+  return files;
+}

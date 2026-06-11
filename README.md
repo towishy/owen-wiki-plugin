@@ -8,7 +8,7 @@ Owen Wiki Template is an Obsidian plugin that installs the Owen-WIKI Template Ki
 
 ### Manual Install
 
-1. Download `owen-wiki-plugin-1.18.0.zip` from the latest GitHub Release.
+1. Download `owen-wiki-plugin-1.19.0.zip` from the latest GitHub Release.
 2. Extract it into `<your-vault>/.obsidian/plugins/owen-wiki-plugin/`.
 3. Open Obsidian and enable community plugins if prompted.
 4. Enable **Owen Wiki Template**.
@@ -49,6 +49,19 @@ Existing files are skipped by default. Enable **Overwrite existing files** in th
 
 After each run, the plugin shows a setup report with created, overwritten, and skipped file counts plus a compact file list.
 
+## Safety Tools
+
+- **Dry Run preview** shows the folders and files that would be created, copied, overwritten, or skipped without writing to the vault.
+- **Back up before overwrite** saves replaced files under `.owen-wiki-backups/YYYYMMDDTHHMMSSZ/`.
+- **Repair missing files** recreates only missing Owen-WIKI folders and files while preserving existing files.
+- **Health check** validates required folders, required files, and the bundled `template-manifest.json`.
+- **Setup report export** writes run history to `outputs/wiki-ops/setup-report-*.md`.
+- **Open start document after setup** opens `wiki/synthesis/overview.md` when setup completes.
+
+The plugin includes a left ribbon button for quick setup access. Settings and setup dialogs can be shown in English or Korean.
+
+On mobile, use the plugin primarily for vault structure and Markdown document creation. The bundled Python and PowerShell automation scripts are intended for desktop environments.
+
 ## Development
 
 Sync the bundled template kit from a local Owen-WIKI template repository:
@@ -61,6 +74,7 @@ Build and package the plugin:
 
 ```bash
 npm install
+npm test
 npm run package
 ```
 
@@ -73,4 +87,4 @@ npm install
 npm run package
 ```
 
-The package script creates `release/owen-wiki-plugin-1.18.0.zip`, containing the Obsidian install files and bundled template kit.
+The package script creates `release/owen-wiki-plugin-1.19.0.zip`, containing the Obsidian install files and bundled template kit.

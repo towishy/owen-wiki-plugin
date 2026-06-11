@@ -10,6 +10,12 @@ Use this smoke test before publishing a release.
 npm run package
 ```
 
+Run the unit tests for pure setup helpers.
+
+```bash
+npm test
+```
+
 1. Copy the release files into a test vault plugin folder.
 
 ```powershell
@@ -40,3 +46,7 @@ Save that JSON as `.obsidian/community-plugins.json`, and make sure `.obsidian/a
 - Existing files are skipped when overwrite is off.
 - The setup report lists copied and skipped files.
 - Minimal, Standard, Full, and Custom preset states update correctly in plugin settings.
+- Dry Run shows planned changes without writing files.
+- Upgrade backs up overwritten files when backup is enabled.
+- Health Check reports missing folders/files and template manifest metadata.
+- Settings and setup dialogs switch between English and Korean.
