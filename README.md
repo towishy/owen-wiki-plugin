@@ -1,3 +1,5 @@
+![Owen Kit](screenshot/owen-kit.png)
+
 # Owen Wiki Template Obsidian Plugin
 
 Owen Wiki Template is an Obsidian plugin that installs the Owen-WIKI Template Kit into the active vault. When the plugin is enabled, it can create the LLM wiki operating structure, starter pages, ontology templates, page templates, automation scripts, assets, and optional GitHub Actions workflow.
